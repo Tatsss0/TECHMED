@@ -1,0 +1,9 @@
+.avatar { object-fit: cover; }
+.list-group-item { border-radius: 8px; margin-bottom: 8px; }
+.badge-status { width: 10px; height: 10px; border-radius: 999px; display: inline-block; margin-right: 6px; }
+.badge-status.upcoming { background: #0d6efd; }
+.badge-status.pending { background: #f7c948; }
+.badge-status.past { background: #6c757d; }
+.file-meta { font-size: 12px; color: #6c757d; }
+.toast-container { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: 1080; }
+
