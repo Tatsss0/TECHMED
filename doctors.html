@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>TECHMED</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+
+  <!-- Favicons -->
+  <link href="logo512.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700,1,900&family=Poppins:wght@300;400;500;600;700&family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+
+  <!-- Swiper CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"/>
+
+  <!-- Main CSS File -->
+  <link href="assets/css/main.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<style>
+  /* Make Flatpickr calendar smaller */
+  .flatpickr-calendar {
+    font-size: 12px !important;
+    transform: scale(0.89);
+    transform-origin: top left;
+  }
+
+  /* Hide adjacent-month days and make non-interactive */
+  .flatpickr-day.prevMonthDay,
+  .flatpickr-day.nextMonthDay {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* Available day */
+  .flatpickr-day.available {
+    background: #e0e0e0;
+    border-radius: 50%;
+    color: #000;
+  }
+  .flatpickr-day.available:hover { background: #d0d0d0; }
+
+  /* Selected day */
+  .flatpickr-day.selected {
+    background: #87cefa !important;
+    color: #000 !important;
+    border-radius: 50%;
+  }
+
+  /* Unavailable day */
+  .flatpickr-day.unavailable,
+  .flatpickr-day.disabled,
+  .flatpickr-day.notAllowed {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  /* Fully booked day */
+  .flatpickr-day.booked {
+    background: #ff6b6b !important;
+    color: #fff !important;
+    border-radius: 50%;
+  }
+</style>
+
+</head>
+
+
+<body class="doctors-page">
+
+<header id="header" class="header d-flex align-items-center fixed-top">
+  <div class="container position-relative d-flex align-items-center justify-content-between">
+
+    <a href="techmed.php" class="logo d-flex align-items-center me-auto me-xl-0">
+      <h1 class="sitename">TECH<span>MED</span></h1>
+    </a>
+
+    <nav id="navmenu" class="navmenu">
+      <ul>
+        <li><a href="techmed.php" >Home</a></li>
+        <li><a href="about.php">About</a></li>
+        <li><a href="contact.php">Contact</a></li>
+        <li><a href="doctor.php" class="active">Doctors</a></li>
+        <li class="dropdown"><a href="#"><span>More Pages</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+          <ul>
+            <li><a href="department-details.html">Medical Certificate</a></li>
+            <li><a href="service-details.html">E-Prescription</a></li>
+          </ul>
+        </li>
+        <li class="dropdown"><a href="#"><span>Account</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+          <ul>
+            <li><a href="#">Name</a></li>
+            <li><a href="#">Profile</a></li>
+            <li><a href="login.php">Log Out</a></li>
+          </ul>
+        </li>
+      </ul>
+      <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+    </nav>
+
+    <a class="btn-getstarted" href="#find-a-doctor">Apointment</a>
+
+  </div>
+</header>
+
+<main class="main">
+  <!-- Content omitted for brevity; keep your doctors listing and cards here -->
+
+  <!-- Appointmnet Section -->
+  <section id="appointment" class="appointmnet section">
+    <div class="container" data-aos="fade-up" data-aos-delay="100">
+      <div class="row gy-4">
+        <!-- Appointment Info omitted for brevity -->
+
+        <!-- Appointment Form -->
+        <div class="col-lg-6">
+          <div class="appointment-form-wrapper" data-aos="fade-up" data-aos-delay="200">
+            <form action="forms/appointment.php" method="post" class="appointment-form php-email-form">
+              <div class="row gy-3">
+                <div class="col-md-6">
+                  <input type="text" name="name" class="form-control" placeholder="Your Full Name" required>
+                </div>
+                <div class="col-md-6">
+                  <input type="email" name="email" class="form-control" placeholder="Your Email" required>
+                </div>
+                <div class="col-md-6">
+                  <input type="tel" name="phone" class="form-control" placeholder="Your Phone Number" inputmode="tel" maxlength="11" oninput="this.value = this.value.replace(/(?!^\+)[^\d]/g, '')" required>
+                </div>
+                <div class="col-md-6">
+                  <input type="text" name="doctor" id="doctorInput" class="form-control" placeholder="Selected Doctor" readonly required>
+                </div>
+                <div class="col-md-6">
+                  <div class="calendar-wrapper">
+                    <input type="text" name="date" id="dateInput" class="form-control" placeholder="Select Date" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <select name="time" id="timeSelect" class="form-select" required>
+                    <option value="">Select Time</option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <div class="loading">Loading</div>
+                  <div class="error-message"></div>
+                  <div class="sent-message">Your appointment request has been sent successfully. We will contact you shortly!</div>
+                  <button type="submit" class="btn btn-appointment w-100">
+                    <i class="bi bi-calendar-plus me-2"></i>Book Appointment
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const doctorInput = document.getElementById("doctorInput");
+        const dateInput = document.getElementById("dateInput");
+        const timeSelect = document.getElementById("timeSelect");
+        const buttons = document.querySelectorAll(".btn-appointment");
+
+        // Doctor schedules
+        const doctorSchedules = {
+          "Dr. Amelia Brooks": { workingDays: [1,3,5], times: ["09:00 AM","10:30 AM","02:00 PM"] },
+          "Dr. Noah Turner":   { workingDays: [2,4],   times: ["11:00 AM","01:00 PM","04:00 PM"] },
+          "Dr. Sofia Bennett": { workingDays: [1,2,3,4], times: ["10:00 AM","12:30 PM","03:30 PM"] }
+        };
+
+        // Example booked slots (Y-m-d: [times])
+        const bookedSlots = {
+          "Dr. Amelia Brooks": {
+            "2025-09-08": ["09:00 AM"],
+            "2025-09-10": ["09:00 AM","10:30 AM","02:00 PM"]
+          },
+          "Dr. Noah Turner": {
+            "2025-09-11": ["11:00 AM","01:00 PM","04:00 PM"]
+          }
+        };
+
+        let selectedDoctor = "";
+        let fpInstance;
+
+        function isFullyBooked(doctor, dateStr) {
+          const doc = doctorSchedules[doctor];
+          if (!doc) return true;
+          const booked = (bookedSlots[doctor] && bookedSlots[doctor][dateStr]) || [];
+          return booked.length >= doc.times.length;
+        }
+
+        function recalc() { fpInstance.redraw(); }
+
+        fpInstance = flatpickr(dateInput, {
+          inline: true,
+          dateFormat: "Y-m-d",
+          disableMobile: true,
+          disable: [
+            function(date) {
+              if (!selectedDoctor) return true;
+              const calMonth = fpInstance.currentMonth;
+              const calYear  = fpInstance.currentYear;
+              if (date.getMonth() !== calMonth || date.getFullYear() !== calYear) return true;
+              const doc = doctorSchedules[selectedDoctor];
+              if (!doc || !doc.workingDays.includes(date.getDay())) return true;
+              const dateStr = fpInstance.formatDate(date, "Y-m-d");
+              return isFullyBooked(selectedDoctor, dateStr);
+            }
+          ],
+          onDayCreate: function(dObj, dStr, fp, dayElem) {
+            if (!selectedDoctor) return;
+            const doc = doctorSchedules[selectedDoctor];
+            const d = dayElem.dateObj;
+            const sameMonth = (d.getMonth() === fp.currentMonth && d.getFullYear() === fp.currentYear);
+            if (!sameMonth) return;
+            const dateStr = fp.formatDate(d, "Y-m-d");
+            const working = doc && doc.workingDays.includes(d.getDay());
+            if (working) {
+              if (isFullyBooked(selectedDoctor, dateStr)) dayElem.classList.add("booked");
+              else dayElem.classList.add("available");
+            } else {
+              dayElem.classList.add("unavailable");
+            }
+          },
+          onChange: function(selectedDates, dateStr) {
+            timeSelect.innerHTML = '<option value="">Select Time</option>';
+            if (!selectedDoctor || !dateStr) return;
+            const doc = doctorSchedules[selectedDoctor];
+            if (!doc) return;
+            const booked = (bookedSlots[selectedDoctor] && bookedSlots[selectedDoctor][dateStr]) || [];
+            doc.times.forEach(time => {
+              if (booked.includes(time)) return;
+              const opt = document.createElement("option");
+              opt.value = time; opt.textContent = time;
+              timeSelect.appendChild(opt);
+            });
+          },
+          onMonthChange: recalc,
+          onYearChange: recalc,
+          onReady: recalc
+        });
+
+        // Choose doctor
+        buttons.forEach(button => {
+          button.addEventListener("click", function (e) {
+            e.preventDefault();
+            selectedDoctor = this.getAttribute("data-doctor");
+            doctorInput.value = selectedDoctor;
+            fpInstance.clear();
+            timeSelect.innerHTML = '<option value="">Select Time</option>';
+            fpInstance.redraw();
+            document.querySelector("#appointment").scrollIntoView({ behavior: "smooth" });
+          });
+        });
+      });
+      </script>
+
+    </div>
+  </section>
+
+</main>
+
+<footer id="footer" class="footer position-relative">
+  <div class="container footer-top">
+    <!-- Footer content here -->
+  </div>
+</footer>
+
+<a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+<div id="preloader"></div>
+
+<!-- Vendor JS Files -->
+<script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="assets/vendor/php-email-form/validate.js"></script>
+<script src="assets/vendor/aos/aos.js"></script>
+<script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+<script src="assets/vendor/purecounter/purecounter_vanilla.js"></script>
+<script src="assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
+<script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+<script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+<script src="assets/js/main.js"></script>
+
+</body>
+
+</html>
+
