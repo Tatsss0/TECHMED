@@ -193,6 +193,9 @@
     $('#profile-about').value = p.about || '';
     $('#doc-name').textContent = p.name || 'Doctor';
     $('#doc-specialty').textContent = p.specialty || '';
+    const avatar = p.avatarDataUrl || 'https://via.placeholder.com/56x56.png?text=Dr';
+    const img = document.getElementById('avatar');
+    if (img) img.src = avatar;
   }
 
   function renderLicenses() {

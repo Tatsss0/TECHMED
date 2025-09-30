@@ -42,6 +42,16 @@
       <div class="card p-3">
         <h4>Profile & Licenses</h4>
         <p class="text-muted">Update personal details and certifications</p>
+        <div class="row align-items-center g-3 mb-2">
+          <div class="col-auto">
+            <img id="avatar-preview" src="https://via.placeholder.com/96x96.png?text=Dr" alt="avatar" style="width:96px;height:96px;border-radius:12px;object-fit:cover;">
+          </div>
+          <div class="col-auto d-flex gap-2">
+            <input type="file" id="profile-avatar" accept="image/*" class="d-none">
+            <button type="button" class="btn btn-outline-primary" id="btn-avatar-change"><i class="bi bi-image"></i> Change Photo</button>
+            <button type="button" class="btn btn-outline-danger" id="btn-avatar-remove"><i class="bi bi-x-circle"></i> Remove</button>
+          </div>
+        </div>
         <form id="profile-form">
           <div class="row g-3">
             <div class="col-md-6">

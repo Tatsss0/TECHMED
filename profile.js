@@ -15,6 +15,9 @@
     $('#profile-contact').value = p.contact || '';
     $('#profile-email').value = p.email || '';
     $('#profile-about').value = p.about || '';
+    const avatar = p.avatarDataUrl || 'https://via.placeholder.com/96x96.png?text=Dr';
+    const prev = document.getElementById('avatar-preview');
+    if (prev) prev.src = avatar;
   }
 
   function renderLicenses() {
@@ -45,6 +48,38 @@
   function fileToDataURL(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); }); }
   function downloadDataUrl(dataUrl, filename) { const a = document.createElement('a'); a.href = dataUrl; a.download = filename; a.click(); }
 
+  // Avatar handlers
+  const avatarInput = document.getElementById('profile-avatar');
+  const avatarChangeBtn = document.getElementById('btn-avatar-change');
+  const avatarRemoveBtn = document.getElementById('btn-avatar-remove');
+  const avatarPreview = document.getElementById('avatar-preview');
+
+  function fileToDataURLImage(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  avatarChangeBtn?.addEventListener('click', () => avatarInput?.click());
+  avatarInput?.addEventListener('change', async () => {
+    const file = avatarInput.files && avatarInput.files[0];
+    if (!file) return;
+    const dataUrl = await fileToDataURLImage(file);
+    if (avatarPreview) avatarPreview.src = dataUrl;
+    const prof = load(STORAGE.profile, {});
+    prof.avatarDataUrl = dataUrl;
+    save(STORAGE.profile, prof);
+  });
+  avatarRemoveBtn?.addEventListener('click', () => {
+    if (avatarPreview) avatarPreview.src = 'https://via.placeholder.com/96x96.png?text=Dr';
+    const prof = load(STORAGE.profile, {});
+    delete prof.avatarDataUrl;
+    save(STORAGE.profile, prof);
+  });
+
   document.getElementById('license-upload').addEventListener('click', async () => {
     const input = document.getElementById('profile-license');
     const files = Array.from(input.files || []);
@@ -67,7 +102,8 @@
       specialty: document.getElementById('profile-specialty').value.trim(),
       contact: document.getElementById('profile-contact').value.trim(),
       email: document.getElementById('profile-email').value.trim(),
-      about: document.getElementById('profile-about').value.trim()
+      about: document.getElementById('profile-about').value.trim(),
+      avatarDataUrl: avatarPreview ? avatarPreview.src : undefined
     };
     save(STORAGE.profile, profile);
     toast('Profile saved');
