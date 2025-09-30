@@ -212,24 +212,20 @@
           inline: true,
           dateFormat: "Y-m-d",
           disableMobile: true,
+          minDate: "today",
           disable: [
             function(date) {
-              if (!selectedDoctor) return true;
-              const calMonth = fpInstance.currentMonth;
-              const calYear  = fpInstance.currentYear;
-              if (date.getMonth() !== calMonth || date.getFullYear() !== calYear) return true;
+              if (!selectedDoctor) return true; // require doctor first
               const doc = doctorSchedules[selectedDoctor];
-              if (!doc || !doc.workingDays.includes(date.getDay())) return true;
+              if (!doc || !doc.workingDays.includes(date.getDay())) return true; // unavailable weekdays
               const dateStr = fpInstance.formatDate(date, "Y-m-d");
-              return isFullyBooked(selectedDoctor, dateStr);
+              return isFullyBooked(selectedDoctor, dateStr); // fully booked
             }
           ],
           onDayCreate: function(dObj, dStr, fp, dayElem) {
             if (!selectedDoctor) return;
             const doc = doctorSchedules[selectedDoctor];
             const d = dayElem.dateObj;
-            const sameMonth = (d.getMonth() === fp.currentMonth && d.getFullYear() === fp.currentYear);
-            if (!sameMonth) return;
             const dateStr = fp.formatDate(d, "Y-m-d");
             const working = doc && doc.workingDays.includes(d.getDay());
             if (working) {
