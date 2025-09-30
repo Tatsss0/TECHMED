@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Doctor Portal</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <span class="logo">🩺</span>
+        <h1>Doctor Portal</h1>
+      </div>
+      <nav class="top-nav">
+        <button class="nav-btn" data-target="profile">Profile</button>
+        <button class="nav-btn" data-target="appointments">Appointments</button>
+        <button class="nav-btn" data-target="patients">Patients</button>
+      </nav>
+    </header>
+
+    <main id="view-container">
+      <!-- Profile View -->
+      <section id="view-profile" class="view active">
+        <h2>Profile</h2>
+        <form id="profile-form" class="card">
+          <div class="grid two">
+            <label>Full Name
+              <input type="text" id="doctor-name" required />
+            </label>
+            <label>Email
+              <input type="email" id="doctor-email" required />
+            </label>
+            <label>Phone
+              <input type="tel" id="doctor-phone" />
+            </label>
+            <label>Specialization
+              <input type="text" id="doctor-specialization" />
+            </label>
+            <label>License Number
+              <input type="text" id="doctor-license" />
+            </label>
+            <label>Years of Experience
+              <input type="number" id="doctor-experience" min="0" />
+            </label>
+          </div>
+
+          <label>About
+            <textarea id="doctor-about" rows="4" placeholder="Short bio"></textarea>
+          </label>
+
+          <div class="divider"></div>
+
+          <h3>Certifications & Licenses</h3>
+          <div class="upload-row">
+            <input type="file" id="cert-upload" multiple />
+            <button type="button" id="btn-add-cert" class="btn">Upload</button>
+          </div>
+          <ul id="cert-list" class="file-list"></ul>
+
+          <div class="actions">
+            <button type="submit" class="btn primary">Save Profile</button>
+            <button type="button" id="btn-reset-profile" class="btn">Reset</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Appointments View -->
+      <section id="view-appointments" class="view">
+        <h2>Appointments</h2>
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="upcoming">Upcoming</button>
+          <button class="tab-btn" data-tab="pending">Pending</button>
+          <button class="tab-btn" data-tab="past">Past</button>
+        </div>
+
+        <div id="tab-upcoming" class="tab active">
+          <ul id="list-upcoming" class="list"></ul>
+        </div>
+        <div id="tab-pending" class="tab">
+          <ul id="list-pending" class="list"></ul>
+        </div>
+        <div id="tab-past" class="tab">
+          <ul id="list-past" class="list"></ul>
+        </div>
+      </section>
+
+      <!-- Patients View -->
+      <section id="view-patients" class="view">
+        <h2>Patients</h2>
+        <div class="patient-layout">
+          <aside class="patient-list">
+            <div class="search-row">
+              <input type="text" id="patient-search" placeholder="Search patients..." />
+            </div>
+            <ul id="patients-ul" class="list selectable"></ul>
+          </aside>
+          <section class="patient-details">
+            <div id="patient-summary" class="card empty">Select a patient to view details</div>
+
+            <div id="patient-profile" class="card hidden">
+              <h3>Profile</h3>
+              <div class="grid two" id="patient-profile-grid"></div>
+            </div>
+
+            <div id="patient-history" class="card hidden">
+              <h3>History</h3>
+              <ul id="history-ul" class="timeline"></ul>
+            </div>
+
+            <div id="patient-files" class="card hidden">
+              <h3>Reports & Files</h3>
+              <ul id="files-ul" class="file-list"></ul>
+              <div class="actions">
+                <button id="btn-download-all" class="btn">Download Selected</button>
+              </div>
+            </div>
+
+            <div id="patient-consultations" class="card hidden">
+              <h3>Past Consultations</h3>
+              <ul id="consultations-ul" class="consultations"></ul>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">© <span id="year"></span> Doctor Portal</footer>
+
+    <template id="appointment-item-tpl">
+      <li class="item appointment">
+        <div class="left">
+          <div class="primary"></div>
+          <div class="secondary"></div>
+        </div>
+        <div class="right actions"></div>
+      </li>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+  </html>
+
