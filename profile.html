@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>TECHMED — Profile</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2c3e50" />
+
+  <link href="logo512.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Poppins:wght@300;500;700&family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/css/main.css" rel="stylesheet">
+  <link href="docpov.css" rel="stylesheet">
+</head>
+
+<body class="index-page">
+  <header id="header" class="header d-flex align-items-center fixed-top">
+    <div class="container d-flex align-items-center justify-content-between">
+      <a href="techmed.php" class="logo d-flex align-items-center me-auto me-xl-0">
+        <h1 class="sitename">TECH<span>MED</span></h1>
+      </a>
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li><a href="docpov.html">Dashboard</a></li>
+          <li><a href="patients.html">Patients & Records</a></li>
+          <li><a href="profile.html" class="active">Profile</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="mt-5 pt-4">
+    <div class="container">
+      <div class="card p-3">
+        <h4>Profile & Licenses</h4>
+        <p class="text-muted">Update personal details and certifications</p>
+        <div class="row align-items-center g-3 mb-2">
+          <div class="col-auto">
+            <img id="avatar-preview" src="https://via.placeholder.com/96x96.png?text=Dr" alt="avatar" style="width:96px;height:96px;border-radius:12px;object-fit:cover;">
+          </div>
+          <div class="col-auto d-flex gap-2">
+            <input type="file" id="profile-avatar" accept="image/*" class="d-none">
+            <button type="button" class="btn btn-outline-primary" id="btn-avatar-change"><i class="bi bi-image"></i> Change Photo</button>
+            <button type="button" class="btn btn-outline-danger" id="btn-avatar-remove"><i class="bi bi-x-circle"></i> Remove</button>
+          </div>
+        </div>
+        <form id="profile-form">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Full Name</label>
+              <input type="text" id="profile-name" class="form-control" value="Dr. John Doe">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Specialty</label>
+              <input type="text" id="profile-specialty" class="form-control" value="Endocrinologist">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Contact Number</label>
+              <input type="text" id="profile-contact" class="form-control" value="+639123456789">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" id="profile-email" class="form-control" value="doctor@example.com">
+            </div>
+            <div class="col-12">
+              <label class="form-label">About</label>
+              <textarea id="profile-about" class="form-control" rows="3" placeholder="Short bio"></textarea>
+            </div>
+          </div>
+          <div class="mt-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="button" class="btn btn-outline-secondary" id="profile-reset">Reset</button>
+          </div>
+          <hr class="my-4" />
+          <h6>Licenses & Certifications</h6>
+          <div class="row g-2 align-items-center">
+            <div class="col-md-8"><input type="file" id="profile-license" class="form-control" multiple></div>
+            <div class="col-md-4 d-grid"><button type="button" class="btn btn-outline-primary" id="license-upload">Upload</button></div>
+          </div>
+          <ul class="list-group mt-3" id="license-list"></ul>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <footer id="footer" class="footer position-relative mt-5">
+    <div class="container text-center">
+      <p>© <strong>TECHMED</strong> All Rights Reserved</p>
+    </div>
+  </footer>
+
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="profile.js"></script>
+</body>
+</html>
+

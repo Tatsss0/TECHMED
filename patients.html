@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>TECHMED — Patients & Records</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2c3e50" />
+
+  <link href="logo512.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Poppins:wght@300;500;700&family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/css/main.css" rel="stylesheet">
+  <link href="docpov.css" rel="stylesheet">
+</head>
+
+<body class="index-page">
+  <header id="header" class="header d-flex align-items-center fixed-top">
+    <div class="container d-flex align-items-center justify-content-between">
+      <a href="techmed.php" class="logo d-flex align-items-center me-auto me-xl-0">
+        <h1 class="sitename">TECH<span>MED</span></h1>
+      </a>
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li><a href="docpov.html">Dashboard</a></li>
+          <li><a href="patients.html" class="active">Patients & Records</a></li>
+          <li><a href="profile.html">Profile</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="mt-5 pt-4">
+    <div class="container">
+      <div class="card p-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <h4>Patients</h4>
+          <div class="input-group" style="max-width:300px">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" id="patient-search" class="form-control" placeholder="Search patients..." />
+          </div>
+        </div>
+        <div id="patients-list" class="list-group mt-2"></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal fade" id="patientModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Patient Records</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="patient-records"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer id="footer" class="footer position-relative mt-5">
+    <div class="container text-center">
+      <p>© <strong>TECHMED</strong> All Rights Reserved</p>
+    </div>
+  </footer>
+
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="patients.js"></script>
+</body>
+</html>
+
