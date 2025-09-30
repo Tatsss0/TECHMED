@@ -75,10 +75,15 @@
 
   // Appointments
   let appointments = load(STORAGE.appointments, seedAppointments());
+  // Normalize: send any pending appointments straight to upcoming
+  if (appointments.some(a => a.status === 'pending')) {
+    appointments = appointments.map(a => a.status === 'pending' ? { ...a, status: 'upcoming' } : a);
+    save(STORAGE.appointments, appointments);
+  }
   function formatDate(dateStr) { const d = new Date(dateStr); return d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }); }
 
   function renderAppointments() {
-    const sections = { upcoming: 'appointments-upcoming', pending: 'appointments-pending', past: 'appointments-past' };
+    const sections = { upcoming: 'appointments-upcoming', past: 'appointments-past' };
     Object.keys(sections).forEach(status => {
       const container = document.getElementById(sections[status]);
       const filtered = appointments.filter(a => a.status === status || (status==='past' && a.status==='done'));
@@ -98,11 +103,6 @@
               <a href="video.php?id=${a.id}" class="btn btn-primary">Join</a>
               <button class="btn btn-success" data-mark-done="${a.id}">Mark as Done</button>
             </div>
-          ` : a.status === 'pending' ? `
-            <div class="d-flex gap-2">
-              <button class="btn btn-outline-success" data-approve="${a.id}">Approve</button>
-              <button class="btn btn-outline-danger" data-reject="${a.id}">Reject</button>
-            </div>
           ` : `<button class="btn btn-outline-secondary btn-sm" data-view-record="${a.patient}">View</button>`}
         </div>
       `).join('');
@@ -110,8 +110,6 @@
 
     // Bind actions
     $$('[data-mark-done]').forEach(b => b.addEventListener('click', () => markCompleted(b.getAttribute('data-mark-done'))));
-    $$('[data-approve]').forEach(b => b.addEventListener('click', () => setStatus(b.getAttribute('data-approve'), 'upcoming')));
-    $$('[data-reject]').forEach(b => b.addEventListener('click', () => setStatus(b.getAttribute('data-reject'), 'past')));
     $$('[data-view-record]').forEach(b => b.addEventListener('click', () => viewPatientRecord(b.getAttribute('data-view-record'))));
   }
 
