@@ -41,9 +41,9 @@
 
   function bindEvents(){
     $('#btn-avatar-change').addEventListener('click', ()=> $('#profile-avatar').click());
-    $('#profile-avatar').addEventListener('change', uploadAvatar);
+    $('#profile-avatar').addEventListener('change', uploadAvatarCloudinary);
     $('#btn-avatar-remove').addEventListener('click', removeAvatar);
-    $('#license-upload').addEventListener('click', uploadLicenses);
+    $('#license-upload').addEventListener('click', uploadLicensesCloudinary);
     $('#profile-form').addEventListener('submit', saveProfile);
     $('#profile-reset').addEventListener('click', (e)=>{ e.preventDefault(); loadProfile(); });
   }
@@ -87,16 +87,20 @@
     }
   }
 
-  async function uploadAvatar(){
+  async function uploadAvatarCloudinary(){
     const fileEl = $('#profile-avatar');
     const file = fileEl.files && fileEl.files[0];
     if (!file) return;
     const uid = currentUser.uid;
-    const path = `doctors/${uid}/avatar.jpg`;
     try {
-      const ref = firebase.storage().ref().child(path);
-      await ref.put(file, { contentType: file.type });
-      const url = await ref.getDownloadURL();
+      const form = new FormData();
+      form.append('file', file);
+      form.append('upload_preset', CLOUDINARY.unsignedUploadPreset);
+      form.append('folder', `${CLOUDINARY.folder}/${uid}`);
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/image/upload`, { method: 'POST', body: form });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      const url = data.secure_url;
       await db.collection('doctors').doc(uid).set({ avatarUrl: url, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
       $('#avatar-preview').src = url;
       fileEl.value = '';
@@ -109,9 +113,8 @@
 
   async function removeAvatar(){
     const uid = currentUser.uid;
-    const path = `doctors/${uid}/avatar.jpg`;
     try {
-      await firebase.storage().ref().child(path).delete().catch(()=>{});
+      // We can't delete from Cloudinary without credentials; just clear URL.
       await db.collection('doctors').doc(uid).set({ avatarUrl: '', updatedAt: FieldValue.serverTimestamp() }, { merge: true });
       $('#avatar-preview').src = PLACEHOLDER;
       toast('Avatar removed');
@@ -121,25 +124,28 @@
     }
   }
 
-  async function uploadLicenses(){
+  async function uploadLicensesCloudinary(){
     const input = $('#profile-license');
     const files = Array.from(input.files || []);
     if (!files.length) { toast('Select files to upload','info'); return; }
     const uid = currentUser.uid;
     for (const file of files) {
       try {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('upload_preset', CLOUDINARY.unsignedUploadPreset);
+        form.append('folder', `${CLOUDINARY.folder}/${uid}/licenses`);
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/auto/upload`, { method: 'POST', body: form });
+        if (!res.ok) throw new Error('Upload failed');
+        const data = await res.json();
+        const url = data.secure_url;
         const licRef = db.collection('doctors').doc(uid).collection('licenses').doc();
-        const storagePath = `doctors/${uid}/licenses/${licRef.id}_${file.name}`;
-        const sref = firebase.storage().ref().child(storagePath);
-        await sref.put(file, { contentType: file.type });
-        const url = await sref.getDownloadURL();
         await licRef.set({
           id: licRef.id,
           name: file.name,
           size: file.size,
-          contentType: file.type || null,
+          contentType: file.type || data.resource_type,
           url,
-          path: storagePath,
           uploadedAt: FieldValue.serverTimestamp()
         });
       } catch (err) {
@@ -182,10 +188,10 @@
     }
   }
 
-  async function deleteLicense(id, path){
+  async function deleteLicense(id){
     const uid = currentUser.uid;
     try {
-      await firebase.storage().ref().child(path).delete().catch(()=>{});
+      // Can't delete Cloudinary assets anonymously; remove Firestore record only.
       await db.collection('doctors').doc(uid).collection('licenses').doc(id).delete();
       await loadLicenses();
       toast('Deleted');
