@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TechMed Video Consultation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="vc.css">
+</head>
+<body>
+  <header>TechMed Video Consultation</header>
+  <div id="utility">👥 Participants: <span id="participantCount">1</span></div>
+
+  <div id="video-area">
+    <video id="remoteVideo" autoplay playsinline></video>
+    <video id="localVideo" autoplay playsinline muted></video>
+  </div>
+
+  <div id="controls">
+    <button id="micBtn" class="btn" title="Toggle Microphone">🎤</button>
+    <button id="camBtn" class="btn" title="Toggle Camera">🎥</button>
+    <button id="screenBtn" class="btn" title="Share Screen">🖥️</button>
+    <button id="devicesBtn" class="btn" title="Select Devices">🎚️</button>
+    <button id="statsBtn" class="btn" title="Show Stats">📈</button>
+    <button id="chatBtn" class="btn" title="Open Chat">💬</button>
+    <button id="fullscreenBtn" class="btn" title="Fullscreen">⛶</button>
+    <button id="leaveBtn" class="btn btn-red" title="Leave">❌</button>
+  </div>
+
+  <div id="room-info">
+    <button id="startBtn" class="btn" title="Start Camera">📷</button>
+    <button id="createBtn" class="btn" title="Create Room">➕</button>
+    <input id="roomIdInput" placeholder="Enter Room ID" />
+    <button id="joinBtn" class="btn" title="Join Room">➡️</button>
+    <button id="copyBtn" class="btn" style="display:none;" title="Copy Room ID">🔗</button>
+  </div>
+
+  <div id="side-panel" class="hidden">
+    <div id="panel-tabs">
+      <button data-tab="chat" class="tab active">Chat</button>
+      <button data-tab="devices" class="tab">Devices</button>
+      <button data-tab="stats" class="tab">Stats</button>
+    </div>
+    <div id="panel-content">
+      <div id="chatTab" class="tab-pane active">
+        <div id="chatMessages"></div>
+        <div id="chatInputRow">
+          <input id="chatInput" placeholder="Type a message" />
+          <button id="sendChatBtn" class="btn">Send</button>
+        </div>
+      </div>
+      <div id="devicesTab" class="tab-pane">
+        <label>Camera</label>
+        <select id="cameraSelect"></select>
+        <label>Microphone</label>
+        <select id="micSelect"></select>
+        <label>Speakers</label>
+        <select id="speakerSelect"></select>
+        <button id="applyDevicesBtn" class="btn">Apply</button>
+      </div>
+      <div id="statsTab" class="tab-pane">
+        <pre id="statsOutput"></pre>
+      </div>
+    </div>
+  </div>
+
+  <template id="msgTemplate">
+    <div class="msg"><span class="meta"></span><span class="text"></span></div>
+  </template>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_FIREBASE_API_KEY",
+      authDomain: "YOUR_FIREBASE_PROJECT.firebaseapp.com",
+      projectId: "YOUR_FIREBASE_PROJECT",
+      storageBucket: "YOUR_FIREBASE_PROJECT.appspot.com",
+      messagingSenderId: "XXXXXXX",
+      appId: "XXXXXXXXXX"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let localStream, remoteStream, peerConnection, screenStream, dataChannel, statsTimer;
+    const servers = { iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }] };
+
+    const localVideo = document.getElementById("localVideo");
+    const remoteVideo = document.getElementById("remoteVideo");
+    const participantCount = document.getElementById("participantCount");
+    const roomInfo = document.getElementById("room-info");
+    const controls = document.getElementById("controls");
+    const sidePanel = document.getElementById("side-panel");
+
+    const cameraSelect = document.getElementById('cameraSelect');
+    const micSelect = document.getElementById('micSelect');
+    const speakerSelect = document.getElementById('speakerSelect');
+
+    function appendMessage(text, meta = "Me") {
+      const tpl = document.getElementById('msgTemplate').content.cloneNode(true);
+      tpl.querySelector('.meta').textContent = meta + ': ';
+      tpl.querySelector('.text').textContent = text;
+      document.getElementById('chatMessages').appendChild(tpl);
+      const el = document.getElementById('chatMessages');
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function togglePanel(section) {
+      sidePanel.classList.remove('hidden');
+      document.querySelectorAll('#panel-tabs .tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`#panel-tabs .tab[data-tab="${section}"]`).classList.add('active');
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      document.getElementById(section + 'Tab').classList.add('active');
+    }
+
+    async function enumerateDevices() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter(d => d.kind === 'videoinput');
+      const mics = devices.filter(d => d.kind === 'audioinput');
+      const outs = devices.filter(d => d.kind === 'audiooutput');
+      cameraSelect.innerHTML = cams.map(d => `<option value="${d.deviceId}">${d.label || 'Camera'}</option>`).join('');
+      micSelect.innerHTML = mics.map(d => `<option value="${d.deviceId}">${d.label || 'Microphone'}</option>`).join('');
+      speakerSelect.innerHTML = outs.map(d => `<option value="${d.deviceId}">${d.label || 'Speakers'}</option>`).join('');
+    }
+
+    function stopStream(stream) {
+      if (!stream) return;
+      stream.getTracks().forEach(t => t.stop());
+    }
+
+    function cleanup() {
+      clearInterval(statsTimer);
+      if (peerConnection) {
+        peerConnection.ontrack = null;
+        peerConnection.onicecandidate = null;
+        peerConnection.close();
+      }
+      stopStream(localStream);
+      stopStream(screenStream);
+      if (remoteVideo.srcObject) {
+        remoteVideo.srcObject.getTracks().forEach(t => t.stop());
+      }
+    }
+
+    async function ensureLocalStreams() {
+      // Ensure local and remote streams exist before creating peer
+      if (!localStream) {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = localStream;
+      }
+      if (!remoteStream) {
+        remoteStream = new MediaStream();
+        remoteVideo.srcObject = remoteStream;
+      }
+    }
+
+    document.getElementById("startBtn").onclick = async () => {
+      await ensureLocalStreams();
+      await enumerateDevices();
+      roomInfo.classList.add("slide-away");
+    };
+
+    async function createPeer() {
+      peerConnection = new RTCPeerConnection(servers);
+      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+      peerConnection.ontrack = e => e.streams[0].getTracks().forEach(t => remoteStream.addTrack(t));
+      peerConnection.onconnectionstatechange = () => {
+        if (peerConnection.connectionState === 'connected') participantCount.textContent = 2;
+        if (['disconnected','failed','closed'].includes(peerConnection.connectionState)) participantCount.textContent = 1;
+      };
+      dataChannel = peerConnection.createDataChannel('chat');
+      dataChannel.onmessage = (e) => appendMessage(e.data, 'Peer');
+      peerConnection.ondatachannel = (e) => {
+        dataChannel = e.channel; dataChannel.onmessage = (ev) => appendMessage(ev.data, 'Peer');
+      };
+      return peerConnection;
+    }
+
+    document.getElementById("createBtn").onclick = async () => {
+      const callDoc = db.collection("calls").doc();
+      const offerCandidates = callDoc.collection("offerCandidates");
+      const answerCandidates = callDoc.collection("answerCandidates");
+
+      document.getElementById("roomIdInput").value = callDoc.id;
+      const copyBtn = document.getElementById("copyBtn");
+      copyBtn.style.display = "inline-block";
+      copyBtn.onclick = () => {
+        const link = `${location.origin}${location.pathname}?room=${callDoc.id}`;
+        navigator.clipboard.writeText(link).then(() => {
+          const previous = copyBtn.textContent;
+          copyBtn.textContent = '✅';
+          setTimeout(() => (copyBtn.textContent = previous), 1200);
+        });
+      };
+
+      await ensureLocalStreams();
+      await createPeer();
+      peerConnection.onicecandidate = e => { if (e.candidate) offerCandidates.add(e.candidate.toJSON()); };
+
+      const offerDescription = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offerDescription);
+      await callDoc.set({ offer: { type: offerDescription.type, sdp: offerDescription.sdp } });
+
+      callDoc.onSnapshot(snapshot => {
+        const data = snapshot.data();
+        if (data?.answer && !peerConnection.currentRemoteDescription) {
+          peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+          participantCount.textContent = 2;
+        }
+      });
+
+      answerCandidates.onSnapshot(snapshot => snapshot.docChanges().forEach(change => {
+        if (change.type === "added") {
+          peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+        }
+      }));
+
+      roomInfo.classList.add("slide-away");
+    };
+
+    document.getElementById("joinBtn").onclick = async () => {
+      const callId = document.getElementById("roomIdInput").value.trim();
+      if (!callId) { alert('Enter Room ID'); return; }
+      const callDoc = db.collection("calls").doc(callId);
+      const offerCandidates = callDoc.collection("offerCandidates");
+      const answerCandidates = callDoc.collection("answerCandidates");
+
+      await ensureLocalStreams();
+      await createPeer();
+      peerConnection.onicecandidate = e => { if (e.candidate) answerCandidates.add(e.candidate.toJSON()); };
+
+      const docSnap = await callDoc.get();
+      if (!docSnap.exists) { alert('Invalid Room ID'); return; }
+      const callData = docSnap.data();
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
+      const answerDescription = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answerDescription);
+      await callDoc.update({ answer: { type: answerDescription.type, sdp: answerDescription.sdp } });
+
+      offerCandidates.onSnapshot(snapshot => snapshot.docChanges().forEach(change => {
+        if (change.type === "added") {
+          peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+        }
+      }));
+
+      roomInfo.classList.add("slide-away");
+      participantCount.textContent = 2;
+    };
+
+    // Controls
+    document.getElementById("micBtn").onclick = () => {
+      if (localStream) {
+        const track = localStream.getAudioTracks()[0];
+        if (!track) return;
+        track.enabled = !track.enabled;
+        document.getElementById("micBtn").textContent = track.enabled ? "🎤" : "🔇";
+      }
+    };
+    document.getElementById("camBtn").onclick = () => {
+      if (localStream) {
+        const track = localStream.getVideoTracks()[0];
+        if (!track) return;
+        track.enabled = !track.enabled;
+        document.getElementById("camBtn").textContent = track.enabled ? "🎥" : "📷";
+      }
+    };
+    document.getElementById("leaveBtn").onclick = () => {
+      cleanup();
+      location.reload();
+    };
+    document.getElementById("fullscreenBtn").onclick = () => {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    };
+
+    // Screen share
+    document.getElementById('screenBtn').onclick = async () => {
+      if (!peerConnection) return;
+      if (!screenStream) {
+        try {
+          screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+          const screenTrack = screenStream.getVideoTracks()[0];
+          const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+          if (sender && screenTrack) {
+            await sender.replaceTrack(screenTrack);
+          }
+          screenTrack.onended = async () => {
+            const camTrack = localStream.getVideoTracks()[0];
+            if (sender && camTrack) await sender.replaceTrack(camTrack);
+            stopStream(screenStream); screenStream = null;
+          };
+        } catch (e) { console.error(e); }
+      } else {
+        const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+        const camTrack = localStream.getVideoTracks()[0];
+        if (sender && camTrack) await sender.replaceTrack(camTrack);
+        stopStream(screenStream); screenStream = null;
+      }
+    };
+
+    // Devices panel
+    document.getElementById('devicesBtn').onclick = async () => {
+      await enumerateDevices();
+      togglePanel('devices');
+    };
+    document.getElementById('applyDevicesBtn').onclick = async () => {
+      const constraints = {
+        video: cameraSelect.value ? { deviceId: { exact: cameraSelect.value } } : true,
+        audio: micSelect.value ? { deviceId: { exact: micSelect.value } } : true
+      };
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      const videoTrack = newStream.getVideoTracks()[0];
+      const audioTrack = newStream.getAudioTracks()[0];
+      if (videoTrack) {
+        const sender = peerConnection?.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender) await sender.replaceTrack(videoTrack);
+      }
+      if (audioTrack) {
+        const sender = peerConnection?.getSenders().find(s => s.track && s.track.kind === 'audio');
+        if (sender) await sender.replaceTrack(audioTrack);
+      }
+      stopStream(localStream);
+      localStream = newStream;
+      localVideo.srcObject = localStream;
+      // Set sinkId for output device when supported
+      if ('setSinkId' in HTMLMediaElement.prototype && speakerSelect.value) {
+        try { await remoteVideo.setSinkId(speakerSelect.value); } catch {}
+      }
+    };
+
+    // Chat
+    document.getElementById('chatBtn').onclick = () => togglePanel('chat');
+    function sendChat() {
+      const input = document.getElementById('chatInput');
+      if (!input.value) return;
+      if (!dataChannel || dataChannel.readyState !== 'open') {
+        alert('Chat is not ready yet. Please wait for connection.');
+        return;
+      }
+      dataChannel.send(input.value);
+      appendMessage(input.value, 'Me');
+      input.value = '';
+    }
+    document.getElementById('sendChatBtn').onclick = sendChat;
+    document.getElementById('chatInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendChat();
+    });
+
+    // Stats panel
+    document.getElementById('statsBtn').onclick = () => {
+      togglePanel('stats');
+      clearInterval(statsTimer);
+      if (!peerConnection) return;
+      statsTimer = setInterval(async () => {
+        const stats = await peerConnection.getStats();
+        const report = {};
+        stats.forEach((stat) => {
+          if (stat.type === 'outbound-rtp' && stat.kind === 'video') report.outboundVideo = stat;
+          if (stat.type === 'inbound-rtp' && stat.kind === 'video') report.inboundVideo = stat;
+          if (stat.type === 'candidate-pair' && stat.state === 'succeeded') report.candidatePair = stat;
+        });
+        document.getElementById('statsOutput').textContent = JSON.stringify(report, null, 2);
+      }, 1000);
+    };
+
+    // Drag local video
+    let isDragging = false, offsetX, offsetY;
+    localVideo.addEventListener("mousedown", e => {
+      isDragging = true;
+      offsetX = e.clientX - localVideo.offsetLeft;
+      offsetY = e.clientY - localVideo.offsetTop;
+      localVideo.style.cursor = "grabbing";
+    });
+    document.addEventListener("mousemove", e => {
+      if (isDragging) {
+        localVideo.style.left = (e.clientX - offsetX) + "px";
+        localVideo.style.top = (e.clientY - offsetY) + "px";
+      }
+    });
+    document.addEventListener("mouseup", () => {
+      isDragging = false;
+      localVideo.style.cursor = "grab";
+    });
+    localVideo.addEventListener("touchstart", e => {
+      isDragging = true;
+      const t = e.touches[0];
+      offsetX = t.clientX - localVideo.offsetLeft;
+      offsetY = t.clientY - localVideo.offsetTop;
+    });
+    document.addEventListener("touchmove", e => {
+      if (isDragging) {
+        const t = e.touches[0];
+        localVideo.style.left = (t.clientX - offsetX) + "px";
+        localVideo.style.top = (t.clientY - offsetY) + "px";
+      }
+    });
+    document.addEventListener("touchend", () => { isDragging = false; });
+
+    // Auto-hide controls & adjust remote video
+    let hideControlsTimeout;
+    const localVideoEl = document.getElementById("localVideo");
+    const remoteVideoEl = document.getElementById("remoteVideo");
+
+    function showControls() {
+      controls.classList.remove("hidden");
+      localVideoEl.classList.remove("lowered");
+      remoteVideoEl.classList.add("shrinked");
+      clearTimeout(hideControlsTimeout);
+      hideControlsTimeout = setTimeout(() => {
+        controls.classList.add("hidden");
+        localVideoEl.classList.add("lowered");
+        remoteVideoEl.classList.remove("shrinked");
+      }, 3000);
+    }
+
+    ["mousemove", "touchstart"].forEach(evt => {
+      document.addEventListener(evt, showControls);
+    });
+    showControls();
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', cleanup);
+
+    // Prefill from URL param ?room=ID
+    const urlParams = new URLSearchParams(location.search);
+    const prefill = urlParams.get('room');
+    if (prefill) {
+      document.getElementById('roomIdInput').value = prefill;
+    }
+  </script>
+</body>
+</html>
