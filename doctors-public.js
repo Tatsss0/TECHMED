@@ -67,6 +67,70 @@
     }
   }
 
+  function slugify(text){
+    return (text || 'general').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'general';
+  }
+
+  function makeDirectoryItem(doc){
+    const d = doc.data();
+    const fullName = d.fullName || (d.displayName || 'Doctor').replace(/^Dr\.\s*/, '');
+    const name = /^Dr\./i.test(fullName) ? fullName : `Dr. ${fullName}`;
+    const specialty = d.specialty || '';
+    const deptSlug = `filter-${slugify((specialty.split(/[,•-]/)[0] || 'general'))}`; // e.g., Cardiology -> filter-cardiology
+    const image = d.avatarUrl || PLACEHOLDER;
+    const bio = d.about || '';
+    const schedule = Array.isArray(d.schedule) ? d.schedule : [];
+
+    const col = document.createElement('div');
+    col.className = `col-lg-3 col-md-6 doctor-item isotope-item ${deptSlug}`;
+    col.innerHTML = `
+      <article class="doctor-card h-100">
+        <figure class="doctor-media">
+          <img src="${image}" class="img-fluid" alt="${name}" loading="lazy" style="object-fit:cover;width:100%;height:220px;border-radius:8px;">
+        </figure>
+        <div class="doctor-content">
+          <h3 class="doctor-name">${name}</h3>
+          <p class="doctor-title">${specialty}</p>
+          <p class="doctor-desc">${bio ? (bio.length > 120 ? bio.slice(0,117) + '…' : bio) : ''}</p>
+          <div class="doctor-meta">
+            ${specialty ? `<span class="badge dept">${specialty.split(/[,•-]/)[0]}</span>` : ''}
+          </div>
+          <div class="doctor-actions d-flex gap-2">
+            <a href="#appointment" class="btn btn-sm btn-appointment" data-doctor-id="${doc.id}" data-doctor-name="${name}" data-doctor-specialty="${specialty}">Book Appointment</a>
+            <a href="#" class="btn btn-sm btn-soft btn-view-profile">View Profile</a>
+          </div>
+        </div>
+      </article>`;
+
+    // Hook up buttons
+    col.querySelector('.btn-view-profile')?.addEventListener('click', (e)=>{
+      e.preventDefault();
+      setProfile({ name, specialty, image, bio, schedule, reviews: '' });
+      // Scroll to profile section if present
+      const prof = document.querySelector('.profile-tabs') || document.getElementById('doctor-name');
+      if (prof && prof.scrollIntoView) prof.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    col.querySelector('.btn-appointment')?.addEventListener('click', (e)=>{
+      // Let host page handle booking UI; we emit an event with details
+      const detail = { doctorId: doc.id, name, specialty, image };
+      window.dispatchEvent(new CustomEvent('book-appointment', { detail }));
+    });
+
+    return col;
+  }
+
+  function renderDirectoryFromSnapshot(snap){
+    const container = document.querySelector('.doctor-directory .isotope-container');
+    if (!container) return;
+    container.innerHTML = '';
+    if (snap.empty) {
+      container.innerHTML = '<div class="col-12 text-center text-muted py-3">No doctors available</div>';
+      return;
+    }
+    snap.forEach(doc => container.appendChild(makeDirectoryItem(doc)));
+    // If the page uses Isotope or AOS, their init can run separately
+  }
+
   async function renderDoctors(){
     const wrapper = qs('.compact-view .swiper .swiper-wrapper') || qs('.swiper-wrapper');
     if (!wrapper) return;
@@ -82,13 +146,16 @@
         }
         snap.forEach(doc => wrapper.appendChild(makeSlide(doc)));
         initSwiperIfAvailable(wrapper);
+        renderDirectoryFromSnapshot(snap);
       }, (err) => {
         console.error(err);
         wrapper.innerHTML = '<div class="p-3 text-center w-100 text-danger">Failed to load doctors</div>';
+        renderDirectoryFromSnapshot({ empty: true, forEach: ()=>{} });
       });
     } catch (e) {
       console.error(e);
       wrapper.innerHTML = '<div class="p-3 text-center w-100 text-danger">Failed to load doctors</div>';
+      renderDirectoryFromSnapshot({ empty: true, forEach: ()=>{} });
     }
   }
 
