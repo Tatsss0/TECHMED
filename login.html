@@ -58,11 +58,8 @@
       alertEl.className = 'alert alert-' + type;
     }
 
-    auth.onAuthStateChanged((user) => {
-      if (user) {
-        window.location.href = './docpov.html';
-      }
-    });
+    // Force manual login: clear any existing session when visiting the login page
+    auth.signOut().catch(()=>{});
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
