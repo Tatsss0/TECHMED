@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>TECHMED — Patients & Records</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+</head>
+<body class="bg-light">
+  <header class="border-bottom py-2 bg-white">
+    <div class="container d-flex align-items-center justify-content-between">
+      <a href="./docpov.html" class="text-decoration-none d-flex align-items-center">
+        <h1 class="h5 m-0">TECH<span class="text-primary">MED</span></h1>
+      </a>
+      <nav class="nav">
+        <a class="nav-link" href="./docpov.html">Dashboard</a>
+        <a class="nav-link active" href="./patients.html">Patients & Records</a>
+        <a class="nav-link" href="./profile.html">Profile</a>
+      </nav>
+      <button id="logoutBtn" class="btn btn-outline-secondary btn-sm">Logout</button>
+    </div>
+  </header>
+
+  <main id="main" class="py-4">
+    <div class="container">
+      <div class="card p-3 shadow-sm">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <h4 class="m-0">Patients</h4>
+          <div class="d-flex gap-2">
+            <div class="input-group" style="max-width:300px">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="text" id="patient-search" class="form-control" placeholder="Search patients..." />
+            </div>
+            <button class="btn btn-primary" id="addConsultBtn"><i class="bi bi-plus-lg"></i> Add Consultation</button>
+          </div>
+        </div>
+        <div id="patients-list" class="list-group mt-2"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Patient Records Modal -->
+  <div class="modal fade" id="patientModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="patientModalTitle">Patient Records</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="patient-records"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Consultation Modal -->
+  <div class="modal fade" id="addConsultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Consultation</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="consultForm">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Patient Name</label>
+                <input type="text" id="cName" class="form-control" required />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Patient Email</label>
+                <input type="email" id="cEmail" class="form-control" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Patient Phone</label>
+                <input type="tel" id="cPhone" class="form-control" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Date</label>
+                <input type="datetime-local" id="cDate" class="form-control" />
+              </div>
+              <div class="col-12">
+                <label class="form-label">Notes</label>
+                <textarea id="cNotes" class="form-control" rows="3" placeholder="Consultation notes"></textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Prescription</label>
+                <input type="text" id="cRx" class="form-control" placeholder="e.g. Metformin 500mg" />
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-init.js"></script>
+  <script src="./patients.js"></script>
+</body>
+</html>

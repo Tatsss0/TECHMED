@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>TECHMED — Doctor Profile</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; }
+    .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 1080; }
+  </style>
+</head>
+<body class="bg-light">
+  <header class="border-bottom py-2 bg-white">
+    <div class="container d-flex align-items-center justify-content-between">
+      <a href="./docpov.html" class="text-decoration-none d-flex align-items-center">
+        <h1 class="h5 m-0">TECH<span class="text-primary">MED</span></h1>
+      </a>
+      <nav class="nav">
+        <a class="nav-link" href="./docpov.html">Dashboard</a>
+        <a class="nav-link active" href="./profile.html">Profile</a>
+      </nav>
+      <button id="logoutBtn" class="btn btn-outline-secondary btn-sm">Logout</button>
+    </div>
+  </header>
+
+  <main class="py-4">
+    <div class="container">
+      <div class="card p-3 shadow-sm">
+        <h4>Profile & Licenses</h4>
+        <p class="text-muted">Update personal details and certifications</p>
+        <div class="row align-items-center g-3 mb-2">
+          <div class="col-auto">
+            <img id="avatar-preview" src="https://via.placeholder.com/96x96.png?text=Dr" alt="avatar" style="width:96px;height:96px;border-radius:12px;object-fit:cover;">
+          </div>
+          <div class="col-auto d-flex gap-2">
+            <input type="file" id="profile-avatar" accept="image/*" class="d-none">
+            <button type="button" class="btn btn-outline-primary" id="btn-avatar-change"><i class="bi bi-image"></i> Change Photo</button>
+            <button type="button" class="btn btn-outline-danger" id="btn-avatar-remove"><i class="bi bi-x-circle"></i> Remove</button>
+          </div>
+        </div>
+        <form id="profile-form">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Full Name</label>
+              <input type="text" id="profile-name" class="form-control" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Specialty</label>
+              <input type="text" id="profile-specialty" class="form-control" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Contact Number</label>
+              <input type="text" id="profile-contact" class="form-control" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" id="profile-email" class="form-control" />
+            </div>
+            <div class="col-12">
+              <label class="form-label">About</label>
+              <textarea id="profile-about" class="form-control" rows="3" placeholder="Short bio"></textarea>
+            </div>
+          </div>
+          <div class="mt-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="button" class="btn btn-outline-secondary" id="profile-reset">Reset</button>
+          </div>
+          <hr class="my-4" />
+          <h6>Licenses & Certifications</h6>
+          <div class="row g-2 align-items-center">
+            <div class="col-md-8"><input type="file" id="profile-license" class="form-control" multiple></div>
+            <div class="col-md-4 d-grid"><button type="button" class="btn btn-outline-primary" id="license-upload">Upload</button></div>
+          </div>
+          <ul class="list-group mt-3" id="license-list"></ul>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-init.js"></script>
+  <script src="./cloudinary-config.js"></script>
+  <script src="./profile.js"></script>
+</body>
+</html>
