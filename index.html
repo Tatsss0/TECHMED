@@ -10,7 +10,7 @@
 </head>
 <body>
   <header>TechMed Video Consultation</header>
-  <div id="utility">👥 Participants: <span id="participantCount">1</span></div>
+  <div id="utility">👥 Participants: <span id="participantCount">1</span> • <span id="connStatus" class="status-dot" title="Not connected"></span></div>
 
   <div id="video-area">
     <video id="remoteVideo" autoplay playsinline></video>
@@ -29,12 +29,20 @@
   </div>
 
   <div id="room-info">
-    <button id="startBtn" class="btn" title="Start Camera">📷</button>
     <button id="createBtn" class="btn" title="Create Room">➕</button>
     <input id="roomIdInput" placeholder="Enter Room ID" />
     <button id="joinBtn" class="btn" title="Join Room">➡️</button>
     <button id="copyBtn" class="btn" style="display:none;" title="Copy Room ID">🔗</button>
   </div>
+
+  <!-- Overlay for status/loading -->
+  <div id="overlay" class="hidden">
+    <div class="spinner" aria-hidden="true"></div>
+    <div id="overlayText">Setting up your camera…</div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toast" aria-live="polite"></div>
 
   <div id="side-panel" class="hidden">
     <div id="panel-tabs">
@@ -90,6 +98,9 @@
     const roomInfo = document.getElementById("room-info");
     const controls = document.getElementById("controls");
     const sidePanel = document.getElementById("side-panel");
+    const overlay = document.getElementById('overlay');
+    const overlayText = document.getElementById('overlayText');
+    const connStatus = document.getElementById('connStatus');
 
     const cameraSelect = document.getElementById('cameraSelect');
     const micSelect = document.getElementById('micSelect');
@@ -153,19 +164,44 @@
       }
     }
 
-    document.getElementById("startBtn").onclick = async () => {
-      await ensureLocalStreams();
-      await enumerateDevices();
-      roomInfo.classList.add("slide-away");
-    };
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    function showOverlay(text) {
+      if (text) overlayText.textContent = text;
+      overlay.classList.remove('hidden');
+    }
+    function hideOverlay() {
+      overlay.classList.add('hidden');
+    }
+
+    function setStatus(state) {
+      connStatus.classList.remove('status-connected','status-connecting','status-disconnected');
+      if (state === 'connected') connStatus.classList.add('status-connected');
+      else if (state === 'connecting') connStatus.classList.add('status-connecting');
+      else connStatus.classList.add('status-disconnected');
+    }
 
     async function createPeer() {
       peerConnection = new RTCPeerConnection(servers);
       localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-      peerConnection.ontrack = e => e.streams[0].getTracks().forEach(t => remoteStream.addTrack(t));
+      peerConnection.ontrack = e => {
+        e.streams[0].getTracks().forEach(t => remoteStream.addTrack(t));
+        hideOverlay();
+        setStatus('connected');
+      };
       peerConnection.onconnectionstatechange = () => {
         if (peerConnection.connectionState === 'connected') participantCount.textContent = 2;
         if (['disconnected','failed','closed'].includes(peerConnection.connectionState)) participantCount.textContent = 1;
+        setStatus(
+          peerConnection.connectionState === 'connected' ? 'connected' :
+          peerConnection.connectionState === 'connecting' ? 'connecting' : 'disconnected'
+        );
       };
       dataChannel = peerConnection.createDataChannel('chat');
       dataChannel.onmessage = (e) => appendMessage(e.data, 'Peer');
@@ -185,16 +221,20 @@
       copyBtn.style.display = "inline-block";
       copyBtn.onclick = () => {
         const link = `${location.origin}${location.pathname}?room=${callDoc.id}`;
-        navigator.clipboard.writeText(link).then(() => {
-          const previous = copyBtn.textContent;
-          copyBtn.textContent = '✅';
-          setTimeout(() => (copyBtn.textContent = previous), 1200);
-        });
+        if (navigator.share) {
+          navigator.share({ title: 'TechMed Video Consultation', text: 'Join my meeting', url: link }).catch(() => {});
+        } else {
+          navigator.clipboard.writeText(link).then(() => {
+            showToast('Link copied');
+          });
+        }
       };
 
       await ensureLocalStreams();
       await createPeer();
       peerConnection.onicecandidate = e => { if (e.candidate) offerCandidates.add(e.candidate.toJSON()); };
+      setStatus('connecting');
+      showOverlay('Waiting for someone to join…');
 
       const offerDescription = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offerDescription);
@@ -219,7 +259,7 @@
 
     document.getElementById("joinBtn").onclick = async () => {
       const callId = document.getElementById("roomIdInput").value.trim();
-      if (!callId) { alert('Enter Room ID'); return; }
+      if (!callId) { showToast('Enter Room ID'); return; }
       const callDoc = db.collection("calls").doc(callId);
       const offerCandidates = callDoc.collection("offerCandidates");
       const answerCandidates = callDoc.collection("answerCandidates");
@@ -227,9 +267,11 @@
       await ensureLocalStreams();
       await createPeer();
       peerConnection.onicecandidate = e => { if (e.candidate) answerCandidates.add(e.candidate.toJSON()); };
+      setStatus('connecting');
+      showOverlay('Connecting…');
 
       const docSnap = await callDoc.get();
-      if (!docSnap.exists) { alert('Invalid Room ID'); return; }
+      if (!docSnap.exists) { showToast('Invalid Room ID'); hideOverlay(); return; }
       const callData = docSnap.data();
       await peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
       const answerDescription = await peerConnection.createAnswer();
@@ -252,7 +294,11 @@
         const track = localStream.getAudioTracks()[0];
         if (!track) return;
         track.enabled = !track.enabled;
-        document.getElementById("micBtn").textContent = track.enabled ? "🎤" : "🔇";
+        const btn = document.getElementById("micBtn");
+        btn.textContent = track.enabled ? "🎤" : "🔇";
+        btn.classList.toggle('btn-off', !track.enabled);
+        btn.setAttribute('aria-pressed', String(!track.enabled));
+        showToast(track.enabled ? 'Mic on' : 'Mic off');
       }
     };
     document.getElementById("camBtn").onclick = () => {
@@ -260,7 +306,11 @@
         const track = localStream.getVideoTracks()[0];
         if (!track) return;
         track.enabled = !track.enabled;
-        document.getElementById("camBtn").textContent = track.enabled ? "🎥" : "📷";
+        const btn = document.getElementById("camBtn");
+        btn.textContent = track.enabled ? "🎥" : "📷";
+        btn.classList.toggle('btn-off', !track.enabled);
+        btn.setAttribute('aria-pressed', String(!track.enabled));
+        showToast(track.enabled ? 'Camera on' : 'Camera off');
       }
     };
     document.getElementById("leaveBtn").onclick = () => {
@@ -332,10 +382,7 @@
     function sendChat() {
       const input = document.getElementById('chatInput');
       if (!input.value) return;
-      if (!dataChannel || dataChannel.readyState !== 'open') {
-        alert('Chat is not ready yet. Please wait for connection.');
-        return;
-      }
+      if (!dataChannel || dataChannel.readyState !== 'open') { showToast('Chat not ready'); return; }
       dataChannel.send(input.value);
       appendMessage(input.value, 'Me');
       input.value = '';
@@ -426,6 +473,33 @@
     if (prefill) {
       document.getElementById('roomIdInput').value = prefill;
     }
+
+    // Auto initialize media on load and enable controls
+    (async () => {
+      try {
+        showOverlay('Setting up your camera…');
+        await ensureLocalStreams();
+        await enumerateDevices();
+        hideOverlay();
+      } catch (e) {
+        hideOverlay();
+        showToast('Camera/mic permission denied');
+      }
+      // Enable core controls once media is ready
+      ['micBtn','camBtn','screenBtn','devicesBtn','statsBtn','chatBtn','fullscreenBtn','leaveBtn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = false;
+      });
+      // Auto-join if a room id is provided
+      if (prefill) {
+        document.getElementById('joinBtn').click();
+      }
+    })();
+
+    // Enter to join
+    document.getElementById('roomIdInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('joinBtn').click();
+    });
   </script>
 </body>
 </html>
