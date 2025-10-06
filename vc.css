@@ -137,45 +137,7 @@ header {
 .status-connecting { background: #fbbc05; }
 .status-disconnected { background: #ea4335; }
 
-#side-panel {
-  position: absolute;
-  top: 60px;
-  right: 0;
-  width: 320px;
-  height: calc(100% - 60px);
-  background: #111;
-  border-left: 1px solid #333;
-  display: flex;
-  flex-direction: column;
-  transform: translateX(0);
-}
-#side-panel.hidden { display: none; }
-#panel-tabs {
-  display: flex;
-  border-bottom: 1px solid #333;
-}
-#panel-tabs .tab {
-  flex: 1;
-  padding: 10px;
-  background: transparent;
-  color: #aaa;
-  border: none;
-  cursor: pointer;
-}
-#panel-tabs .tab.active { color: #fff; border-bottom: 2px solid #4e9af1; }
-#panel-content { flex: 1; overflow: auto; padding: 10px; }
-
-#chatMessages { height: calc(100% - 50px); overflow: auto; padding-right: 6px; }
-#chatInputRow { display: flex; gap: 8px; margin-top: 8px; }
-#chatInputRow input { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #333; background: #181818; color: white; }
-.msg { margin: 6px 0; }
-.msg .meta { color: #8ab4f8; margin-right: 6px; }
-
-#devicesTab label { display: block; margin: 8px 0 4px; color: #ccc; }
-#devicesTab select { width: 100%; padding: 6px; border-radius: 6px; background: #181818; color: white; border: 1px solid #333; }
-#devicesTab button { margin-top: 10px; }
-
-#statsTab pre { white-space: pre-wrap; background: #0b0b0b; padding: 10px; border-radius: 8px; border: 1px solid #333; }
+/* Side panel and advanced features removed for simplified UI */
 
 /* Overlay */
 #overlay {

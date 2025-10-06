@@ -21,9 +21,7 @@
     <button id="micBtn" class="btn" title="Toggle Microphone">🎤</button>
     <button id="camBtn" class="btn" title="Toggle Camera">🎥</button>
     <button id="screenBtn" class="btn" title="Share Screen">🖥️</button>
-    <button id="devicesBtn" class="btn" title="Select Devices">🎚️</button>
-    <button id="statsBtn" class="btn" title="Show Stats">📈</button>
-    <button id="chatBtn" class="btn" title="Open Chat">💬</button>
+    
     <button id="fullscreenBtn" class="btn" title="Fullscreen">⛶</button>
     <button id="leaveBtn" class="btn btn-red" title="Leave">❌</button>
   </div>
@@ -44,38 +42,7 @@
   <!-- Toasts -->
   <div id="toast" aria-live="polite"></div>
 
-  <div id="side-panel" class="hidden">
-    <div id="panel-tabs">
-      <button data-tab="chat" class="tab active">Chat</button>
-      <button data-tab="devices" class="tab">Devices</button>
-      <button data-tab="stats" class="tab">Stats</button>
-    </div>
-    <div id="panel-content">
-      <div id="chatTab" class="tab-pane active">
-        <div id="chatMessages"></div>
-        <div id="chatInputRow">
-          <input id="chatInput" placeholder="Type a message" />
-          <button id="sendChatBtn" class="btn">Send</button>
-        </div>
-      </div>
-      <div id="devicesTab" class="tab-pane">
-        <label>Camera</label>
-        <select id="cameraSelect"></select>
-        <label>Microphone</label>
-        <select id="micSelect"></select>
-        <label>Speakers</label>
-        <select id="speakerSelect"></select>
-        <button id="applyDevicesBtn" class="btn">Apply</button>
-      </div>
-      <div id="statsTab" class="tab-pane">
-        <pre id="statsOutput"></pre>
-      </div>
-    </div>
-  </div>
-
-  <template id="msgTemplate">
-    <div class="msg"><span class="meta"></span><span class="text"></span></div>
-  </template>
+  
 
   <script>
     const firebaseConfig = {
@@ -89,7 +56,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let localStream, remoteStream, peerConnection, screenStream, dataChannel, statsTimer;
+    let localStream, remoteStream, peerConnection, screenStream;
     const servers = { iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }] };
 
     const localVideo = document.getElementById("localVideo");
@@ -97,41 +64,14 @@
     const participantCount = document.getElementById("participantCount");
     const roomInfo = document.getElementById("room-info");
     const controls = document.getElementById("controls");
-    const sidePanel = document.getElementById("side-panel");
+    
     const overlay = document.getElementById('overlay');
     const overlayText = document.getElementById('overlayText');
     const connStatus = document.getElementById('connStatus');
 
-    const cameraSelect = document.getElementById('cameraSelect');
-    const micSelect = document.getElementById('micSelect');
-    const speakerSelect = document.getElementById('speakerSelect');
+    
 
-    function appendMessage(text, meta = "Me") {
-      const tpl = document.getElementById('msgTemplate').content.cloneNode(true);
-      tpl.querySelector('.meta').textContent = meta + ': ';
-      tpl.querySelector('.text').textContent = text;
-      document.getElementById('chatMessages').appendChild(tpl);
-      const el = document.getElementById('chatMessages');
-      el.scrollTop = el.scrollHeight;
-    }
-
-    function togglePanel(section) {
-      sidePanel.classList.remove('hidden');
-      document.querySelectorAll('#panel-tabs .tab').forEach(t => t.classList.remove('active'));
-      document.querySelector(`#panel-tabs .tab[data-tab="${section}"]`).classList.add('active');
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-      document.getElementById(section + 'Tab').classList.add('active');
-    }
-
-    async function enumerateDevices() {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const cams = devices.filter(d => d.kind === 'videoinput');
-      const mics = devices.filter(d => d.kind === 'audioinput');
-      const outs = devices.filter(d => d.kind === 'audiooutput');
-      cameraSelect.innerHTML = cams.map(d => `<option value="${d.deviceId}">${d.label || 'Camera'}</option>`).join('');
-      micSelect.innerHTML = mics.map(d => `<option value="${d.deviceId}">${d.label || 'Microphone'}</option>`).join('');
-      speakerSelect.innerHTML = outs.map(d => `<option value="${d.deviceId}">${d.label || 'Speakers'}</option>`).join('');
-    }
+    
 
     function stopStream(stream) {
       if (!stream) return;
@@ -139,7 +79,7 @@
     }
 
     function cleanup() {
-      clearInterval(statsTimer);
+      
       if (peerConnection) {
         peerConnection.ontrack = null;
         peerConnection.onicecandidate = null;
@@ -203,11 +143,7 @@
           peerConnection.connectionState === 'connecting' ? 'connecting' : 'disconnected'
         );
       };
-      dataChannel = peerConnection.createDataChannel('chat');
-      dataChannel.onmessage = (e) => appendMessage(e.data, 'Peer');
-      peerConnection.ondatachannel = (e) => {
-        dataChannel = e.channel; dataChannel.onmessage = (ev) => appendMessage(ev.data, 'Peer');
-      };
+      
       return peerConnection;
     }
 
@@ -347,67 +283,7 @@
       }
     };
 
-    // Devices panel
-    document.getElementById('devicesBtn').onclick = async () => {
-      await enumerateDevices();
-      togglePanel('devices');
-    };
-    document.getElementById('applyDevicesBtn').onclick = async () => {
-      const constraints = {
-        video: cameraSelect.value ? { deviceId: { exact: cameraSelect.value } } : true,
-        audio: micSelect.value ? { deviceId: { exact: micSelect.value } } : true
-      };
-      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
-      const videoTrack = newStream.getVideoTracks()[0];
-      const audioTrack = newStream.getAudioTracks()[0];
-      if (videoTrack) {
-        const sender = peerConnection?.getSenders().find(s => s.track && s.track.kind === 'video');
-        if (sender) await sender.replaceTrack(videoTrack);
-      }
-      if (audioTrack) {
-        const sender = peerConnection?.getSenders().find(s => s.track && s.track.kind === 'audio');
-        if (sender) await sender.replaceTrack(audioTrack);
-      }
-      stopStream(localStream);
-      localStream = newStream;
-      localVideo.srcObject = localStream;
-      // Set sinkId for output device when supported
-      if ('setSinkId' in HTMLMediaElement.prototype && speakerSelect.value) {
-        try { await remoteVideo.setSinkId(speakerSelect.value); } catch {}
-      }
-    };
-
-    // Chat
-    document.getElementById('chatBtn').onclick = () => togglePanel('chat');
-    function sendChat() {
-      const input = document.getElementById('chatInput');
-      if (!input.value) return;
-      if (!dataChannel || dataChannel.readyState !== 'open') { showToast('Chat not ready'); return; }
-      dataChannel.send(input.value);
-      appendMessage(input.value, 'Me');
-      input.value = '';
-    }
-    document.getElementById('sendChatBtn').onclick = sendChat;
-    document.getElementById('chatInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') sendChat();
-    });
-
-    // Stats panel
-    document.getElementById('statsBtn').onclick = () => {
-      togglePanel('stats');
-      clearInterval(statsTimer);
-      if (!peerConnection) return;
-      statsTimer = setInterval(async () => {
-        const stats = await peerConnection.getStats();
-        const report = {};
-        stats.forEach((stat) => {
-          if (stat.type === 'outbound-rtp' && stat.kind === 'video') report.outboundVideo = stat;
-          if (stat.type === 'inbound-rtp' && stat.kind === 'video') report.inboundVideo = stat;
-          if (stat.type === 'candidate-pair' && stat.state === 'succeeded') report.candidatePair = stat;
-        });
-        document.getElementById('statsOutput').textContent = JSON.stringify(report, null, 2);
-      }, 1000);
-    };
+    
 
     // Drag local video
     let isDragging = false, offsetX, offsetY;
@@ -479,14 +355,13 @@
       try {
         showOverlay('Setting up your camera…');
         await ensureLocalStreams();
-        await enumerateDevices();
         hideOverlay();
       } catch (e) {
         hideOverlay();
         showToast('Camera/mic permission denied');
       }
       // Enable core controls once media is ready
-      ['micBtn','camBtn','screenBtn','devicesBtn','statsBtn','chatBtn','fullscreenBtn','leaveBtn'].forEach(id => {
+      ['micBtn','camBtn','screenBtn','fullscreenBtn','leaveBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
       });
