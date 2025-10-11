@@ -6,7 +6,7 @@
   window.auth = firebase.auth();
   window.db = firebase.firestore();
 
-  const state = { user: null, profile: null, unsubApptsA: null, unsubApptsB: null, apptA: new Map(), apptB: new Map() };
+  const state = { user: null, profile: null, unsubApptsA: null, unsubApptsB: null, unsubApptsAlias: [], apptA: new Map(), apptB: new Map(), apptAliasMaps: new Map() };
 
   function qs(id){ return document.getElementById(id); }
   function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
