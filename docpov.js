@@ -249,35 +249,35 @@
   function subscribeAppointments(){
     const uid = state.user.uid;
     const listUpcoming = qs('appointments-upcoming');
-    const listPast = qs('appointments-past');
     if (listUpcoming) listUpcoming.innerHTML = '<div class="text-muted small px-2">Loading…</div>';
-    if (state.unsubAppts) { state.unsubAppts(); state.unsubAppts = null; }
 
-    state.unsubAppts = db.collection('appointments')
+    // Tear down previous listeners
+    if (state.unsubApptsA) { state.unsubApptsA(); state.unsubApptsA = null; }
+    if (state.unsubApptsB) { state.unsubApptsB(); state.unsubApptsB = null; }
+    if (state.apptA) state.apptA.clear();
+    if (state.apptB) state.apptB.clear();
+
+    // Primary stream: doctorId == uid (new writes)
+    state.unsubApptsA = db.collection('appointments')
       .where('doctorId','==',uid)
       .orderBy('startAt','asc')
       .onSnapshot((snap)=>{
-        if (listUpcoming) listUpcoming.innerHTML='';
-        if (listPast) listPast.innerHTML='';
-        if (!snap || snap.empty) {
-          if (listUpcoming) listUpcoming.innerHTML = '<div class="list-group-item">No upcoming appointments</div>';
-          updateNotify([]);
-          return;
-        }
-        const now = new Date();
-        const items = [];
-        snap.forEach(doc => {
-          const a = doc.data();
-          items.push(a);
-          const when = a.startAt && a.startAt.toDate ? a.startAt.toDate() : (a.startAt ? new Date(a.startAt) : null);
-          const isPast = when ? when < now : false;
-          const target = isPast ? listPast : listUpcoming;
-          if (target) target.appendChild(renderApptItem(a));
-        });
-        updateNotify(items);
+        if (state.apptA) state.apptA.clear();
+        if (snap && !snap.empty) snap.forEach(doc => state.apptA.set(doc.id, doc.data()));
+        renderAppointmentsMerged();
       }, (err)=>{
         if (listUpcoming) listUpcoming.innerHTML = `<div class="text-danger small px-2">${err?.message || 'Failed to load appointments'}</div>`;
       });
+
+    // Secondary stream: legacy field doctorUid == uid (if present)
+    state.unsubApptsB = db.collection('appointments')
+      .where('doctorUid','==',uid)
+      .orderBy('startAt','asc')
+      .onSnapshot((snap)=>{
+        if (state.apptB) state.apptB.clear();
+        if (snap && !snap.empty) snap.forEach(doc => state.apptB.set(doc.id, doc.data()));
+        renderAppointmentsMerged();
+      }, ()=>{});
   }
 
   async function loadPatients(){
