@@ -33,6 +33,29 @@
   // URL doctorId preselection
   const urlDoctorId = new URL(window.location.href).searchParams.get('doctorId');
 
+  // Cache monthly bookings per doctor to minimize reads
+  // Key: `${doctorId}|YYYY-MM` -> Map<YYYY-MM-DD, Set<number(ms)>>
+  const monthlyBookingsCache = new Map();
+
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  function formatYMD(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function monthKey(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+
+  function isSameDay(a, b) {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+
   function to12h(time) {
     // Expects time as minutes from midnight
     const hours24 = Math.floor(time / 60);
@@ -67,6 +90,12 @@
       endHour: '17:00',
       slotMinutes: 30,
     };
+  }
+
+  function getWorkingDays(doctor) {
+    const sched = doctor?.schedule || {};
+    const wd = Array.isArray(sched.workingDays) && sched.workingDays.length ? sched.workingDays : defaultSchedule().workingDays;
+    return wd;
   }
 
   function buildSlotsForDate(date, schedule) {
@@ -108,6 +137,45 @@
         slotMinutes: data.slotMinutes,
       },
     };
+  }
+
+  async function prefetchMonthBookings(doctorId, year, monthIndex /* 0-based */) {
+    const first = new Date(year, monthIndex, 1, 0, 0, 0, 0);
+    const last = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
+    const mKey = `${doctorId}|${monthKey(first)}`;
+    if (monthlyBookingsCache.has(mKey)) return monthlyBookingsCache.get(mKey);
+
+    const snap = await db.collection('appointments')
+      .where('doctorId', '==', doctorId)
+      .where('startAt', '>=', firebase.firestore.Timestamp.fromDate(first))
+      .where('startAt', '<=', firebase.firestore.Timestamp.fromDate(last))
+      .get();
+
+    const dayToSet = new Map();
+    snap.forEach(d => {
+      const v = d.data();
+      const ts = v && v.startAt && v.startAt.toDate ? v.startAt.toDate() : null;
+      if (!ts) return;
+      const dayKey = formatYMD(ts);
+      let set = dayToSet.get(dayKey);
+      if (!set) { set = new Set(); dayToSet.set(dayKey, set); }
+      set.add(ts.getTime());
+    });
+
+    monthlyBookingsCache.set(mKey, dayToSet);
+    return dayToSet;
+  }
+
+  async function getBookedSetForDayFromCacheOrFetch(doctorId, date) {
+    const y = date.getFullYear();
+    const m = date.getMonth();
+    const mk = `${doctorId}|${monthKey(date)}`;
+    if (!monthlyBookingsCache.has(mk)) {
+      await prefetchMonthBookings(doctorId, y, m);
+    }
+    const map = monthlyBookingsCache.get(mk) || new Map();
+    const set = map.get(formatYMD(date));
+    return set ? new Set(set) : new Set();
   }
 
   async function fetchDoctors() {
@@ -230,6 +298,46 @@
           return !workingDays.includes(d.getDay());
         },
       ],
+      onReady: async function (selectedDates, dateStr, fp) {
+        const currentFirst = new Date(fp.currentYear, fp.currentMonth, 1);
+        await prefetchMonthBookings(doctor.id, currentFirst.getFullYear(), currentFirst.getMonth());
+        fp.redraw();
+      },
+      onMonthChange: async function (selectedDates, dateStr, fp) {
+        const currentFirst = new Date(fp.currentYear, fp.currentMonth, 1);
+        await prefetchMonthBookings(doctor.id, currentFirst.getFullYear(), currentFirst.getMonth());
+        fp.redraw();
+      },
+      onYearChange: async function (selectedDates, dateStr, fp) {
+        const currentFirst = new Date(fp.currentYear, fp.currentMonth, 1);
+        await prefetchMonthBookings(doctor.id, currentFirst.getFullYear(), currentFirst.getMonth());
+        fp.redraw();
+      },
+      onDayCreate: function (dObj, dStr, fp, dayElem) {
+        try {
+          const d = dayElem.dateObj || (dStr ? new Date(`${dStr}T00:00:00`) : null);
+          if (!d || isNaN(d.getTime())) return;
+          // Clear previous markers
+          dayElem.classList.remove('available', 'booked');
+
+          if (!workingDays.includes(d.getDay())) return;
+
+          const mk = `${doctor.id}|${monthKey(d)}`;
+          const map = monthlyBookingsCache.get(mk);
+          const bookedSet = map ? (map.get(formatYMD(d)) || new Set()) : new Set();
+
+          const allSlots = buildSlotsForDate(d, doctor.schedule || defaultSchedule());
+          const today = new Date();
+          const effectiveSlots = isSameDay(d, today) ? filterPastSlots(allSlots) : allSlots;
+          const open = effectiveSlots.filter(s => !bookedSet.has(s.getTime()));
+
+          if (open.length <= 0) {
+            dayElem.classList.add('booked');
+          } else {
+            dayElem.classList.add('available');
+          }
+        } catch (_) { /* ignore */ }
+      },
       onChange: function (selectedDates) {
         const d = selectedDates && selectedDates[0] ? selectedDates[0] : null;
         if (d) {
@@ -240,22 +348,8 @@
   }
 
   async function fetchBookedForDay(doctorId, date) {
-    const start = startOfDay(date);
-    const end = endOfDay(date);
-
-    const snap = await db.collection('appointments')
-      .where('doctorId', '==', doctorId)
-      .where('startAt', '>=', firebase.firestore.Timestamp.fromDate(start))
-      .where('startAt', '<=', firebase.firestore.Timestamp.fromDate(end))
-      .get();
-
-    const bookedMs = new Set();
-    snap.forEach(doc => {
-      const v = doc.data();
-      const ts = v && v.startAt && v.startAt.toDate ? v.startAt.toDate() : null;
-      if (ts) bookedMs.add(ts.getTime());
-    });
-    return bookedMs;
+    // Prefer cached monthly bookings; fall back to month prefetch
+    return await getBookedSetForDayFromCacheOrFetch(doctorId, date);
   }
 
   async function populateTimesForDate(doctor, date) {
@@ -299,6 +393,7 @@
     if (doctorIdHidden) doctorIdHidden.value = doctor.id;
 
     updateProfileView(doctor);
+    renderWeeklySchedule(doctor);
     initCalendarForDoctor(doctor);
 
     // If a date is already selected, repopulate times
@@ -307,11 +402,67 @@
     } else if (dateInput && dateInput.value) {
       const d = new Date(dateInput.value);
       if (!isNaN(d.getTime())) await populateTimesForDate(doctor, d);
+    } else {
+      // Auto-select the next available date/time if nothing is selected
+      const pick = await findNextAvailableSlot(doctor, new Date());
+      if (pick) {
+        if (calendarInstance) calendarInstance.setDate(pick.date, true);
+        await populateTimesForDate(doctor, pick.date);
+        // timeSelect will have options now; pick the one matching pick.timeLabel
+        if (timeSelect) {
+          const opt = Array.from(timeSelect.options).find(o => o.value === pick.timeLabel);
+          if (opt) timeSelect.value = pick.timeLabel;
+        }
+      }
     }
 
     // Scroll to appointment form for convenience
     const formSection = document.getElementById('appointment');
     if (formSection) formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderWeeklySchedule(doctor) {
+    if (!scheduleGridEl) return;
+    const sched = doctor.schedule || defaultSchedule();
+    const working = getWorkingDays(doctor);
+    const start = sched.startHour || '09:00';
+    const end = sched.endHour || '17:00';
+    let html = '<div class="row g-2">';
+    for (let i = 0; i < 7; i += 1) {
+      const on = working.includes(i);
+      html += `
+        <div class="col-6 col-md-4">
+          <div class="border rounded p-2 h-100">
+            <div class="fw-semibold">${DAY_NAMES[i]}</div>
+            <div class="small ${on ? '' : 'text-muted'}">${on ? `${start} - ${end}` : 'Off'}</div>
+          </div>
+        </div>`;
+    }
+    html += '</div>';
+    scheduleGridEl.innerHTML = html;
+  }
+
+  async function findNextAvailableSlot(doctor, fromDate) {
+    const limitDays = 60; // safety bound
+    const start = startOfDay(fromDate);
+    for (let i = 0; i < limitDays; i += 1) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const wd = d.getDay();
+      if (!getWorkingDays(doctor).includes(wd)) continue;
+      const allSlots = buildSlotsForDate(d, doctor.schedule || defaultSchedule());
+      const today = new Date();
+      const effectiveSlots = isSameDay(d, today) ? filterPastSlots(allSlots) : allSlots;
+      if (effectiveSlots.length === 0) continue;
+      const booked = await getBookedSetForDayFromCacheOrFetch(doctor.id, d);
+      const open = effectiveSlots.filter(s => !booked.has(s.getTime()));
+      if (open.length > 0) {
+        const first = open[0];
+        const label = to12h(first.getHours() * 60 + first.getMinutes());
+        return { date: d, timeLabel: label };
+      }
+    }
+    return null;
   }
 
   function attachSelectionHandlers(doctorsById) {
