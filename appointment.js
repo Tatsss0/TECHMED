@@ -79,7 +79,8 @@ auth.onAuthStateChanged(async (user) => {
 
     // Persist appointment
     await db.collection('appointments').add({
-      doctorId: doctorUid,            // dashboard listens to this
+      doctorId: doctorUid,            // primary key used by dashboard
+      doctorUid: doctorUid,           // legacy/secondary key for compatibility
       doctorPublicId: doctorPublicId, // reference to public_doctors/{id}
       doctorName: doctorPretty || '',
       patientId: user.uid,
