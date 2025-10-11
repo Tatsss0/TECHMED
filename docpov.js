@@ -218,6 +218,34 @@
     });
   }
 
+  function renderAppointmentsMerged(){
+    const listUpcoming = qs('appointments-upcoming');
+    const listPast = qs('appointments-past');
+    if (!listUpcoming || !listPast) return;
+    listUpcoming.innerHTML = '';
+    listPast.innerHTML = '';
+    const merged = new Map();
+    if (state.apptA) state.apptA.forEach((v, k) => merged.set(k, v));
+    if (state.apptB) state.apptB.forEach((v, k) => merged.set(k, v));
+    if (merged.size === 0) {
+      listUpcoming.innerHTML = '<div class="list-group-item">No upcoming appointments</div>';
+      updateNotify([]);
+      return;
+    }
+    const items = Array.from(merged.values()).sort((x, y) => {
+      const xt = x.startAt && x.startAt.toDate ? x.startAt.toDate().getTime() : 0;
+      const yt = y.startAt && y.startAt.toDate ? y.startAt.toDate().getTime() : 0;
+      return xt - yt;
+    });
+    const now = Date.now();
+    items.forEach(a => {
+      const t = a.startAt && a.startAt.toDate ? a.startAt.toDate().getTime() : 0;
+      const isPast = t ? t < now : false;
+      (isPast ? listPast : listUpcoming).appendChild(renderApptItem(a));
+    });
+    updateNotify(items);
+  }
+
   function subscribeAppointments(){
     const uid = state.user.uid;
     const listUpcoming = qs('appointments-upcoming');
