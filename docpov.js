@@ -6,7 +6,7 @@
   window.auth = firebase.auth();
   window.db = firebase.firestore();
 
-  const state = { user: null, profile: null, unsubAppts: null };
+  const state = { user: null, profile: null, unsubApptsA: null, unsubApptsB: null, apptA: new Map(), apptB: new Map() };
 
   function qs(id){ return document.getElementById(id); }
   function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
@@ -109,6 +109,7 @@
       const pubSnap = await publicRef.get();
       if (!pubSnap.exists) {
         await publicRef.set({
+          uid: uid,
           name: displayName || withDrPrefix(p.fullName) || 'Doctor',
           specialty: p.specialty || '',
           image: p.avatarUrl || 'assets/img/health/doctor-placeholder.webp',
@@ -157,6 +158,7 @@
         (state.user.displayName || 'Doctor');
 
       await publicRef.set({
+        uid: uid,
         name: displayName,
         specialty: updates.specialty || prev.specialty || '',
         image: prev.image || 'assets/img/health/doctor-placeholder.webp',
