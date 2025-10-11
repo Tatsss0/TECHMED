@@ -260,7 +260,6 @@
     // Primary stream: doctorId == uid (new writes)
     state.unsubApptsA = db.collection('appointments')
       .where('doctorId','==',uid)
-      .orderBy('startAt','asc')
       .onSnapshot((snap)=>{
         if (state.apptA) state.apptA.clear();
         if (snap && !snap.empty) snap.forEach(doc => state.apptA.set(doc.id, doc.data()));
@@ -272,7 +271,6 @@
     // Secondary stream: legacy field doctorUid == uid (if present)
     state.unsubApptsB = db.collection('appointments')
       .where('doctorUid','==',uid)
-      .orderBy('startAt','asc')
       .onSnapshot((snap)=>{
         if (state.apptB) state.apptB.clear();
         if (snap && !snap.empty) snap.forEach(doc => state.apptB.set(doc.id, doc.data()));
