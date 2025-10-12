@@ -1,12 +1,25 @@
 (function () {
   'use strict';
+  // Prevent double-initialization if the script is accidentally included twice
+  if (window.__techmedPatientDirectoryLoaded) return;
+  window.__techmedPatientDirectoryLoaded = true;
 
-  if (!window.firebase || !firebase.apps?.length) {
-    // Firebase not initialized; safely noop
-    return;
+  // Will be set once Firebase is ready
+  let db;
+
+  // Small helper: wait for a condition (Firebase/lib readiness)
+  async function waitUntil(checkFn, { timeoutMs = 10000, intervalMs = 50 } = {}) {
+    const start = Date.now();
+    return new Promise((resolve, reject) => {
+      (function poll() {
+        try {
+          if (checkFn()) return resolve(true);
+        } catch (_) { /* ignore */ }
+        if (Date.now() - start >= timeoutMs) return reject(new Error('timeout'));
+        setTimeout(poll, intervalMs);
+      })();
+    });
   }
-
-  const db = firebase.firestore();
 
   // DOM elements (optional on some pages)
   const swiperEl = document.querySelector('.swiper');
@@ -29,6 +42,7 @@
 
   // Keep flatpickr instance per doctor selection
   let calendarInstance = null;
+  let calendarLibTries = 0;
 
   // URL doctorId preselection
   const urlDoctorId = new URL(window.location.href).searchParams.get('doctorId');
@@ -198,6 +212,32 @@
     });
   }
 
+  let swiperInitTries = 0;
+  function ensureSwiperInitialized() {
+    if (!swiperEl) return;
+    // Avoid double-init
+    if (swiperEl && swiperEl.swiper) return;
+    if (typeof Swiper === 'undefined') {
+      if (swiperInitTries++ < 60) setTimeout(ensureSwiperInitialized, 100);
+      return;
+    }
+    // eslint-disable-next-line no-new
+    new Swiper(swiperEl, {
+      slidesPerView: 1,
+      spaceBetween: 12,
+      navigation: {
+        nextEl: '.swiper-button-next',
+        prevEl: '.swiper-button-prev',
+      },
+      pagination: { el: '.swiper-pagination', clickable: true },
+      breakpoints: {
+        576: { slidesPerView: 2 },
+        992: { slidesPerView: 3 },
+        1200: { slidesPerView: 4 },
+      },
+    });
+  }
+
   function renderDoctorsToSwiper(doctors) {
     if (!swiperWrapper) return;
     swiperWrapper.innerHTML = '';
@@ -216,23 +256,8 @@
       swiperWrapper.appendChild(slide);
     });
 
-    if (typeof Swiper !== 'undefined' && swiperEl) {
-      // eslint-disable-next-line no-new
-      new Swiper(swiperEl, {
-        slidesPerView: 1,
-        spaceBetween: 12,
-        navigation: {
-          nextEl: '.swiper-button-next',
-          prevEl: '.swiper-button-prev',
-        },
-        pagination: { el: '.swiper-pagination', clickable: true },
-        breakpoints: {
-          576: { slidesPerView: 2 },
-          992: { slidesPerView: 3 },
-          1200: { slidesPerView: 4 },
-        },
-      });
-    }
+    // Initialize or retry initializing Swiper once slides are in the DOM
+    ensureSwiperInitialized();
   }
 
   function renderDoctorsToDirectory(doctors) {
@@ -279,7 +304,12 @@
   }
 
   function initCalendarForDoctor(doctor) {
-    if (!dateInput || typeof flatpickr === 'undefined') return;
+    if (!dateInput) return;
+    if (typeof flatpickr === 'undefined') {
+      // Retry briefly until flatpickr is available
+      if (calendarLibTries++ < 60) setTimeout(() => initCalendarForDoctor(doctor), 100);
+      return;
+    }
 
     destroyCalendarIfAny();
 
@@ -482,6 +512,10 @@
 
   async function bootstrap() {
     try {
+      // Ensure Firebase is initialized before using Firestore
+      await waitUntil(() => window.firebase && firebase.apps && firebase.apps.length > 0);
+      db = firebase.firestore();
+
       const doctors = await fetchDoctors();
 
       if (doctors.length === 0) {
@@ -492,6 +526,9 @@
 
       renderDoctorsToSwiper(doctors);
       renderDoctorsToDirectory(doctors);
+
+      // In case Swiper loads after this script, attempt one more init on window load
+      window.addEventListener('load', ensureSwiperInitialized, { once: true });
 
       const doctorsById = new Map(doctors.map(d => [d.id, d]));
       attachSelectionHandlers(doctorsById);
