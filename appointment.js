@@ -48,6 +48,8 @@ auth.onAuthStateChanged(async (user) => {
 
   const form = document.getElementById('appointment-form');
   if (!form) return;
+  if (form.dataset.apptSubmitBound === '1') return;
+  form.dataset.apptSubmitBound = '1';
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -80,10 +82,10 @@ auth.onAuthStateChanged(async (user) => {
 
     const slotTS = firebase.firestore.Timestamp.fromDate(slotDate);
 
-    // Prevent double booking (by doctor UID stored in doctorId)
+    // Prevent double booking (calendar/availability uses public id)
     try {
       const existing = await db.collection('appointments')
-        .where('doctorId', '==', doctorUid)
+        .where('doctorId', '==', doctorPublicId)
         .where('startAt', '==', slotTS)
         .limit(1)
         .get();
@@ -103,11 +105,11 @@ auth.onAuthStateChanged(async (user) => {
       return;
     }
 
-    // Persist appointment
+    // Persist appointment (store both public id and doctor uid)
     try {
       await db.collection('appointments').add({
-        doctorId: doctorUid,            // primary key used by dashboard
-        doctorUid: doctorUid,           // legacy/secondary key for compatibility
+        doctorId: doctorPublicId,       // used by directory/calendar availability
+        doctorUid: doctorUid,           // used by doctor dashboard listeners
         doctorPublicId: doctorPublicId, // reference to public_doctors/{id}
         doctorName: doctorPretty || '',
         patientId: user.uid,
